@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#080b08"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="NaijaFactCheck"/>
+<meta name="description" content="AI-powered fake news detector for Hausa, Yoruba, Nigerian Pidgin and English"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<title>NaijaFactCheck</title>
+
+<!-- Fonts: Fraunces (editorial serif display) + DM Mono (data) + Outfit (body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+<style>
+/* ── DESIGN TOKENS ──────────────────────────────────────────────────────── */
+:root {
+  --bg:           #080b08;
+  --bg2:          #0d110d;
+  --surface:      #111611;
+  --surface2:     #161e16;
+  --border:       #1e271e;
+  --border2:      #253025;
+
+  --green:        #2deb6f;
+  --green-soft:   #1a9944;
+  --green-glow:   #2deb6f28;
+  --green-dim:    #2deb6f14;
+
+  --red:          #f0473a;
+  --red-glow:     #f0473a28;
+  --red-dim:      #f0473a14;
+
+  --amber:        #f5a623;
+  --amber-dim:    #f5a62318;
+
+  --text:         #e8ede8;
+  --text2:        #9aaa9a;
+  --muted:        #4a5a4a;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Outfit', sans-serif;
+  --font-mono:    'DM Mono', 'Courier New', monospace;
+
+  --radius-sm:    8px;
+  --radius:       14px;
+  --radius-lg:    20px;
+
+  --safe-top:     env(safe-area-inset-top, 0px);
+  --safe-bot:     env(safe-area-inset-bottom, 0px);
+
+  --ease-spring:  cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth:  cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ── RESET ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 400;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── GRAIN OVERLAY ──────────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* ── APP SHELL ──────────────────────────────────────────────────────────── */
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bot);
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────────────── */
+header {
+  padding: 14px 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.logo-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: -0.8px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.logo em {
+  font-style: italic;
+  color: var(--green);
+}
+
+.logo-tagline {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--green-soft);
+  background: var(--green-dim);
+  border: 1px solid #2deb6f22;
+  border-radius: 100px;
+  padding: 3px 8px;
+  letter-spacing: 0.5px;
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+  animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--green); }
+  50%       { opacity: 0.5; box-shadow: 0 0 4px var(--green); }
+}
+
+/* ── SCREENS ────────────────────────────────────────────────────────────── */
+.screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  animation: slideUp 0.25s var(--ease-smooth) both;
+  scrollbar-width: none;
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen.active { display: flex; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SCREEN: HOME ───────────────────────────────────────────────────────── */
+.hero {
+  margin-bottom: 24px;
+  padding-top: 4px;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--green);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 1px;
+  background: var(--green);
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: var(--text);
+}
+
+.hero-title em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--green);
+}
+
+/* ── LANGUAGE PILLS ─────────────────────────────────────────────────────── */
+.lang-section-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.lang-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.lang-btn {
+  padding: 7px 16px;
+  border-radius: 100px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s var(--ease-smooth);
+  letter-spacing: 0.3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.lang-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--green-glow);
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+
+.lang-btn:hover { border-color: var(--border2); color: var(--text); }
+.lang-btn:hover::after { opacity: 1; }
+
+.lang-btn.active {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-dim);
+}
+
+/* ── TEXTAREA ───────────────────────────────────────────────────────────── */
+.textarea-wrap {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 158px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.65;
+  padding: 16px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+textarea:focus {
+  border-color: var(--green-soft);
+  box-shadow: 0 0 0 3px var(--green-dim);
+}
+
+textarea::placeholder {
+  color: var(--muted);
+  font-style: italic;
+  font-family: var(--font-display);
+  font-weight: 300;
+}
+
+.textarea-actions {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.paste-btn {
+  padding: 4px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.paste-btn:hover { color: var(--green); border-color: var(--green-soft); }
+
+.char-count {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.char-count.warn { color: var(--amber); }
+
+/* ── CHECK BUTTON ───────────────────────────────────────────────────────── */
+.check-btn {
+  width: 100%;
+  padding: 17px;
+  background: var(--green);
+  color: #030f05;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.3px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.18s var(--ease-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.check-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #ffffff22 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.check-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px var(--green-glow);
+}
+
+.check-btn:active:not(:disabled) { transform: scale(0.98); }
+
+.check-btn:disabled {
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.check-btn .btn-loading {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-style: normal;
+  font-size: 14px;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.check-btn.loading .btn-text { display: none; }
+.check-btn.loading .btn-loading { display: flex; }
+
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid #03300a66;
+  border-top-color: #030f05;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PASTE TIP ──────────────────────────────────────────────────────────── */
+.paste-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.tip-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tip-text {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+.tip-text b { color: var(--text); font-weight: 600; }
+
+/* ── SCREEN: RESULT ─────────────────────────────────────────────────────── */
+.verdict-card {
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.verdict-card.fake {
+  background: var(--red-dim);
+  border: 1px solid #f0473a33;
+}
+
+.verdict-card.real {
+  background: var(--green-dim);
+  border: 1px solid #2deb6f33;
+}
+
+.verdict-card::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  opacity: 0.08;
+}
+
+.verdict-card.fake::before { background: var(--red); }
+.verdict-card.real::before { background: var(--green); }
+
+.verdict-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.verdict-label-wrap { flex: 1; }
+
+.verdict-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.verdict-card.fake .verdict-eyebrow { color: var(--red); }
+.verdict-card.real .verdict-eyebrow { color: var(--green); }
+
+.verdict-word {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -2px;
+  animation: popIn 0.35s var(--ease-spring) both;
+}
+
+.verdict-card.fake .verdict-word { color: var(--red); }
+.verdict-card.real .verdict-word { color: var(--green); }
+
+@keyframes popIn {
+  from { transform: scale(0.7) translateY(10px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.verdict-icon-large {
+  font-size: 44px;
+  animation: popIn 0.4s 0.1s var(--ease-spring) both;
+  flex-shrink: 0;
+}
+
+.conf-section { margin-top: 4px; }
+
+.conf-track {
+  background: #ffffff14;
+  border-radius: 100px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.conf-fill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 1s var(--ease-smooth);
+  position: relative;
+}
+
+.verdict-card.fake .conf-fill { background: var(--red); }
+.verdict-card.real .conf-fill { background: var(--green); }
+
+.conf-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom, #ffffff33, transparent);
+  border-radius: 100px;
+}
+
+.conf-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #ffffff88;
+}
+
+/* ── PROB ROW ───────────────────────────────────────────────────────────── */
+.prob-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.prob-card {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  text-align: center;
+}
+
+.prob-value {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.prob-card.real .prob-value { color: var(--green); }
+.prob-card.fake .prob-value { color: var(--red); }
+
+.prob-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* ── DETAIL CARD ────────────────────────────────────────────────────────── */
+.detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-row:last-child { border-bottom: none; }
+
+.detail-key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.detail-val {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ── TEXT PREVIEW ───────────────────────────────────────────────────────── */
+.text-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--text2);
+  line-height: 1.65;
+  margin-bottom: 14px;
+  word-break: break-word;
+}
+
+/* ── DISCLAIMER ─────────────────────────────────────────────────────────── */
+.disclaimer {
+  background: var(--amber-dim);
+  border: 1px solid #f5a62330;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--amber);
+  line-height: 1.65;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.disclaimer-icon { flex-shrink: 0; font-size: 14px; }
+
+/* ── ACTION ROW ─────────────────────────────────────────────────────────── */
+.action-row {
+  display: flex;
+  gap: 10px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.sec-btn {
+  flex: 1;
+  padding: 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.18s;
+  letter-spacing: 0.1px;
+}
+
+.sec-btn.outline {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+
+.sec-btn.outline:hover { color: var(--text); border-color: var(--text2); }
+
+.sec-btn.filled {
+  background: var(--green);
+  color: #030f05;
+  border: none;
+  font-weight: 700;
+}
+
+.sec-btn.filled:hover {
+  box-shadow: 0 6px 20px var(--green-glow);
+  transform: translateY(-1px);
+}
+
+.sec-btn:active { transform: scale(0.97) !important; }
+
+/* ── SCREEN: ABOUT ──────────────────────────────────────────────────────── */
+.about-hero {
+  margin-bottom: 28px;
+}
+
+.about-hero-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.about-hero-title em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--green);
+}
+
+.about-hero-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.about-section { margin-bottom: 22px; }
+
+.about-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.section-icon {
+  width: 26px; height: 26px;
+  background: var(--green-dim);
+  border: 1px solid #2deb6f22;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.about-section h3 {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.about-section p {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.75;
+}
+
+.about-section ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.about-section li {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.about-section li::before {
+  content: '—';
+  color: var(--green-soft);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.lang-chips {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 5px 14px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.chip.active {
+  background: var(--green-dim);
+  border: 1px solid #2deb6f33;
+  color: var(--green);
+}
+
+.chip.inactive {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+
+.fact-checkers {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.fc-item {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fc-item:last-child { border-bottom: none; }
+
+.fc-name {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.fc-url {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.about-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0 22px;
+}
+
+.tech-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tech-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text2);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+/* ── BOTTOM NAV ─────────────────────────────────────────────────────────── */
+nav {
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 12px 8px calc(12px + 0px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s;
+  color: var(--muted);
+  position: relative;
+}
+
+.nav-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%; right: 25%;
+  height: 2px;
+  background: var(--green);
+  border-radius: 0 0 3px 3px;
+  transform: scaleX(0);
+  transition: transform 0.2s var(--ease-spring);
+}
+
+.nav-btn.active::before { transform: scaleX(1); }
+.nav-btn.active { color: var(--green); }
+
+.nav-icon { font-size: 19px; }
+
+.nav-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+
+/* ── TOAST ──────────────────────────────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: calc(76px + var(--safe-bot));
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0;
+  transition: all 0.25s var(--ease-smooth);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 999;
+  box-shadow: 0 8px 24px #00000066;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── OFFLINE BANNER ─────────────────────────────────────────────────────── */
+#offline-banner {
+  background: var(--amber);
+  color: #000;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 7px;
+  display: none;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+#offline-banner.show { display: block; }
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media (min-height: 720px) {
+  .hero-title { font-size: 36px; }
+  textarea { min-height: 190px; }
+}
+</style>
+</head>
+<body>
+
+<div id="offline-banner">⚠️ You are offline — AI detection unavailable</div>
+
+<div id="app">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="logo-wrap">
+      <div class="logo">Naija<em>Fact</em>Check</div>
+      <div class="logo-tagline">Fake News Detector</div>
+    </div>
+    <div class="header-right">
+      <span class="model-badge">XLM-RoBERTa</span>
+      <div class="status-dot" id="status-dot"></div>
+    </div>
+  </header>
+
+  <!-- ── SCREEN: HOME ── -->
+  <div class="screen active" id="screen-home">
+
+    <div class="hero">
+      <div class="hero-eyebrow">AI-powered detection</div>
+      <h1 class="hero-title">Is this news <em>real</em> or fake?</h1>
+    </div>
+
+    <div class="lang-section-label">Select language</div>
+    <div class="lang-row" id="lang-row">
+      <button class="lang-btn active" data-lang="auto">Auto</button>
+      <button class="lang-btn" data-lang="english">English</button>
+      <button class="lang-btn" data-lang="hausa">Hausa</button>
+      <button class="lang-btn" data-lang="yoruba">Yoruba</button>
+      <button class="lang-btn" data-lang="pidgin">Pidgin</button>
+    </div>
+
+    <div class="textarea-wrap">
+      <textarea
+        id="text-input"
+        placeholder="Paste news text here to check…"
+        maxlength="2000"
+        spellcheck="false"
+      ></textarea>
+      <div class="textarea-actions">
+        <button class="paste-btn" id="paste-btn">Paste</button>
+      </div>
+    </div>
+
+    <div class="char-count" id="char-count">0 / 2000</div>
+
+    <button class="check-btn" id="check-btn" disabled>
+      <span class="btn-text">Check This News</span>
+      <span class="btn-loading">
+        <span class="spinner"></span>
+        Analysing with AI…
+      </span>
+    </button>
+
+    <div class="paste-tip">
+      <span class="tip-icon">💡</span>
+      <p class="tip-text">
+        Copy any text from <b>WhatsApp, Twitter, Facebook,</b> or any app and paste it above. Works in English, Hausa, Yoruba, and Pidgin.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- ── SCREEN: RESULT ── -->
+  <div class="screen" id="screen-result">
+
+    <!-- Verdict card -->
+    <div class="verdict-card" id="verdict-card">
+      <div class="verdict-top">
+        <div class="verdict-label-wrap">
+          <div class="verdict-eyebrow" id="verdict-eyebrow">Verdict</div>
+          <div class="verdict-word" id="verdict-word">—</div>
+        </div>
+        <div class="verdict-icon-large" id="verdict-icon-large"></div>
+      </div>
+      <div class="conf-section">
+        <div class="conf-track">
+          <div class="conf-fill" id="conf-fill" style="width:0%"></div>
+        </div>
+        <div class="conf-meta">
+          <span id="conf-lang-label">—</span>
+          <span id="conf-pct-label">—% confidence</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Probability cards -->
+    <div class="prob-row">
+      <div class="prob-card real">
+        <div class="prob-value" id="real-val">—</div>
+        <div class="prob-label">Real probability</div>
+      </div>
+      <div class="prob-card fake">
+        <div class="prob-value" id="fake-val">—</div>
+        <div class="prob-label">Fake probability</div>
+      </div>
+    </div>
+
+    <!-- Details -->
+    <div class="detail-card">
+      <div class="detail-row">
+        <span class="detail-key">Language</span>
+        <span class="detail-val" id="result-lang">—</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Model</span>
+        <span class="detail-val">XLM-RoBERTa + LoRA</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Training data</span>
+        <span class="detail-val">LIAR · ISOT · NLLB-200</span>
+      </div>
+    </div>
+
+    <!-- Text preview -->
+    <div class="text-preview" id="result-preview"></div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+      <span class="disclaimer-icon">⚠️</span>
+      <span>AI tools can make mistakes. Always verify important news with a trusted fact-checker like <b>Dubawa</b> or <b>AFP Africa</b>.</span>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <button class="sec-btn outline" id="share-btn">Share Result</button>
+      <button class="sec-btn filled" id="check-another-btn">Check Another</button>
+    </div>
+
+  </div>
+
+  <!-- ── SCREEN: ABOUT ── -->
+  <div class="screen" id="screen-about">
+
+    <div class="about-hero">
+      <h2 class="about-hero-title">About<br/><em>NaijaFactCheck</em></h2>
+      <div class="about-hero-sub">Master's Thesis · University Research · 2025</div>
+    </div>
+
+    <div class="about-section">
+      <div class="about-section-head">
+        <div class="section-icon">🔍</div>
+        <h3>What this app does</h3>
+      </div>
+      <p>NaijaFactCheck uses a fine-tuned XLM-RoBERTa model with LoRA to detect fake news in Nigerian languages. Paste any news text and get an AI verdict in seconds.</p>
+    </div>
+
+    <div class="about-section">
+      <div class="about-section-head">
+        <div class="section-icon">🌍</div>
+        <h3>Supported languages</h3>
+      </div>
+      <div class="lang-chips">
+        <span class="chip active">English</span>
+        <span class="chip active">Hausa</span>
+        <span class="chip active">Yoruba</span>
+        <span class="chip active">Pidgin</span>
+        <span class="chip inactive">Igbo — coming soon</span>
+      </div>
+    </div>
+
+    <div class="about-divider"></div>
+
+    <div class="about-section">
+      <div class="about-section-head">
+        <div class="section-icon">⚙️</div>
+        <h3>How it works</h3>
+      </div>
+      <ul>
+        <li>Paste text from WhatsApp, Twitter, or any source</li>
+        <li>The model detects the language automatically if set to Auto</li>
+        <li>XLM-RoBERTa analyses linguistic patterns across 4 languages</li>
+        <li>Returns a FAKE or REAL verdict with a confidence percentage</li>
+        <li>Results below 70% confidence should be treated with caution</li>
+      </ul>
+    </div>
+
+    <div class="about-section">
+      <div class="about-section-head">
+        <div class="section-icon">🧠</div>
+        <h3>The AI model</h3>
+      </div>
+      <ul>
+        <li>Base model: XLM-RoBERTa (Facebook AI)</li>
+        <li>Fine-tuned with LoRA for memory-efficient training</li>
+        <li>African language data generated via NLLB-200 neural translation</li>
+        <li>Training datasets: LIAR, GonzaloA/fake_news, MT-projected Nigerian texts</li>
+        <li>Evaluated with Macro-F1 across Hausa, Yoruba, Pidgin, English</li>
+      </ul>
+      <div class="tech-row" style="margin-top:12px">
+        <span class="tech-tag">XLM-RoBERTa</span>
+        <span class="tech-tag">LoRA</span>
+        <span class="tech-tag">NLLB-200</span>
+        <span class="tech-tag">FastAPI</span>
+        <span class="tech-tag">HuggingFace</span>
+      </div>
+    </div>
+
+    <div class="about-section">
+      <div class="about-section-head">
+        <div class="section-icon">⚠️</div>
+        <h3>Limitations</h3>
+      </div>
+      <ul>
+        <li>AI can make mistakes — double-check important stories</li>
+        <li>Code-switched text (mixed languages) may reduce accuracy</li>
+        <li>Images, audio, and video are not analysed — text only</li>
+        <li>African language labels are silver-standard (MT-projected)</li>
+        <li>Training data reflects patterns up to early 2025</li>
+      </ul>
+    </div>
+
+    <div class="about-section">
+      <div class="about-section-head">
+        <div class="section-icon">✅</div>
+        <h3>Trusted fact-checkers</h3>
+      </div>
+      <div class="fact-checkers">
+        <div class="fc-item">
+          <span class="fc-name">Dubawa</span>
+          <span class="fc-url">dubawa.org</span>
+        </div>
+        <div class="fc-item">
+          <span class="fc-name">AFP Africa</span>
+          <span class="fc-url">factcheck.afp.com</span>
+        </div>
+        <div class="fc-item">
+          <span class="fc-name">FactCheckHub Nigeria</span>
+          <span class="fc-url">factcheckhub.com</span>
+        </div>
+        <div class="fc-item">
+          <span class="fc-name">Pesacheck</span>
+          <span class="fc-url">pesacheck.org</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="about-section">
+      <div class="about-section-head">
+        <div class="section-icon">📄</div>
+        <h3>Research</h3>
+      </div>
+      <p>This app is the deployment artefact of a master's thesis on multilingual fake news detection for Nigerian languages, using cross-lingual transfer learning with silver-standard label projection via NLLB-200 neural machine translation.</p>
+    </div>
+
+  </div>
+
+  <!-- ── BOTTOM NAV ── -->
+  <nav>
+    <button class="nav-btn active" data-screen="home">
+      <span class="nav-icon">🔍</span>
+      <span class="nav-label">Check</span>
+    </button>
+    <button class="nav-btn" data-screen="about">
+      <span class="nav-icon">ℹ️</span>
+      <span class="nav-label">About</span>
+    </button>
+  </nav>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────
+// ⚠️  Replace this with your HuggingFace Spaces URL after deployment
+const API_URL = "https://YOUR-USERNAME-naijaFactCheck.hf.space/predict";
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let selectedLang = "auto";
+let lastResult   = null;
+
+// ── ELEMENTS ──────────────────────────────────────────────────────────────
+const textInput       = document.getElementById("text-input");
+const charCount       = document.getElementById("char-count");
+const checkBtn        = document.getElementById("check-btn");
+const pasteBtn        = document.getElementById("paste-btn");
+const langRow         = document.getElementById("lang-row");
+const verdictCard     = document.getElementById("verdict-card");
+const verdictEyebrow  = document.getElementById("verdict-eyebrow");
+const verdictWord     = document.getElementById("verdict-word");
+const verdictIconLg   = document.getElementById("verdict-icon-large");
+const confFill        = document.getElementById("conf-fill");
+const confLangLabel   = document.getElementById("conf-lang-label");
+const confPctLabel    = document.getElementById("conf-pct-label");
+const realVal         = document.getElementById("real-val");
+const fakeVal         = document.getElementById("fake-val");
+const resultLang      = document.getElementById("result-lang");
+const resultPreview   = document.getElementById("result-preview");
+const shareBtn        = document.getElementById("share-btn");
+const checkAnotherBtn = document.getElementById("check-another-btn");
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  const scr = document.getElementById(`screen-${name}`);
+  if (scr) { scr.classList.add("active"); scr.scrollTop = 0; }
+  document.querySelector(`[data-screen="${name}"]`)?.classList.add("active");
+}
+
+document.querySelectorAll("[data-screen]").forEach(btn => {
+  btn.addEventListener("click", () => showScreen(btn.dataset.screen));
+});
+
+// ── LANGUAGE SELECTOR ─────────────────────────────────────────────────────
+langRow.querySelectorAll(".lang-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    langRow.querySelectorAll(".lang-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedLang = btn.dataset.lang;
+  });
+});
+
+// ── TEXT INPUT ────────────────────────────────────────────────────────────
+textInput.addEventListener("input", () => {
+  const len = textInput.value.trim().length;
+  charCount.textContent = `${textInput.value.length} / 2000`;
+  charCount.className = "char-count" + (textInput.value.length > 1800 ? " warn" : "");
+  checkBtn.disabled = len < 10;
+});
+
+// ── PASTE BUTTON ──────────────────────────────────────────────────────────
+pasteBtn.addEventListener("click", async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    textInput.value = text.slice(0, 2000);
+    textInput.dispatchEvent(new Event("input"));
+    textInput.focus();
+  } catch {
+    showToast("Tap the text box and paste manually");
+  }
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), duration);
+}
+
+// ── LANGUAGE DETECTOR (heuristic fallback) ────────────────────────────────
+function detectLanguage(text) {
+  const t = text.toLowerCase();
+  const hausaWords  = ["na","ne","ya","da","ce","shi","ita","suna","don","kuma","amma","kasar","gwamnati","kasa","mai"];
+  const yorubaWords = ["ni","ti","ko","si","pe","lo","bi","wa","mo","je","fun","ile","ilu","aare","eto","naa","yi"];
+  const pidginWords = ["na","dem","don","dey","dis","dat","wey","im","una","abi","wahala","pikin","oga","chop","sabi"];
+  const score = (words) => words.reduce((acc, w) => acc + (t.split(/\b/).includes(w) ? 1 : 0), 0);
+  const scores = { hausa: score(hausaWords), yoruba: score(yorubaWords), pidgin: score(pidginWords) };
+  const max = Math.max(...Object.values(scores));
+  if (max === 0) return "english";
+  return Object.keys(scores).find(k => scores[k] === max);
+}
+
+// ── API CALL ──────────────────────────────────────────────────────────────
+async function callAPI(text, language) {
+  const controller = new AbortController();
+  const timeout    = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(API_URL, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ text, language }),
+      signal:  controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === "AbortError") throw new Error("Request timed out. Check your connection.");
+    throw err;
+  }
+}
+
+// ── MOCK / DEMO MODE ──────────────────────────────────────────────────────
+function mockResult(text, language) {
+  const detectedLang = language === "auto" ? detectLanguage(text) : language;
+  const fakeKw = ["karya","iro","fake","false","lie","na lie","bleach","cures","hoax","dis na lie","eke"];
+  const isFake = fakeKw.some(k => text.toLowerCase().includes(k));
+  const fp     = isFake ? 72 + Math.random() * 18 : 12 + Math.random() * 22;
+  return {
+    label:      fp > 50 ? "FAKE" : "REAL",
+    confidence: Math.max(fp, 100 - fp).toFixed(1),
+    fake_prob:  fp.toFixed(1),
+    real_prob:  (100 - fp).toFixed(1),
+    language:   detectedLang,
+    _mock:      true,
+  };
+}
+
+// ── MAIN CHECK ────────────────────────────────────────────────────────────
+checkBtn.addEventListener("click", async () => {
+  const text = textInput.value.trim();
+  if (text.length < 10) return;
+
+  checkBtn.classList.add("loading");
+  checkBtn.disabled = true;
+
+  let result;
+  try {
+    try {
+      result = await callAPI(text, selectedLang);
+    } catch (apiErr) {
+      console.warn("API unavailable — using demo mode:", apiErr.message);
+      result = mockResult(text, selectedLang);
+      if (result._mock) showToast("⚠️ Demo mode — deploy API for real AI results", 4000);
+    }
+    lastResult = { ...result, text };
+    renderResult(result, text);
+  } catch (err) {
+    showToast(`Error: ${err.message}`);
+  } finally {
+    checkBtn.classList.remove("loading");
+    checkBtn.disabled = textInput.value.trim().length < 10;
+  }
+});
+
+// ── RENDER RESULT ─────────────────────────────────────────────────────────
+function renderResult(result, text) {
+  const isFake = result.label === "FAKE";
+  const conf   = parseFloat(result.confidence);
+  const fp     = parseFloat(result.fake_prob);
+  const rp     = parseFloat(result.real_prob);
+  const lang   = result.language || selectedLang;
+  const langDisplay = lang.charAt(0).toUpperCase() + lang.slice(1);
+
+  // Verdict card
+  verdictCard.className = `verdict-card ${isFake ? "fake" : "real"}`;
+  verdictEyebrow.textContent = isFake ? "⚠️ Potentially fake" : "✅ Appears credible";
+  verdictWord.textContent    = result.label;
+  verdictIconLg.textContent  = isFake ? "🔴" : "🟢";
+
+  // Confidence bar
+  confFill.style.width = "0%";
+  setTimeout(() => { confFill.style.width = `${conf}%`; }, 80);
+  confLangLabel.textContent = langDisplay;
+  confPctLabel.textContent  = `${conf}% confidence`;
+
+  // Probabilities
+  realVal.textContent = `${rp}%`;
+  fakeVal.textContent = `${fp}%`;
+
+  // Details
+  resultLang.textContent = langDisplay;
+
+  // Preview
+  resultPreview.textContent = text.length > 220 ? text.slice(0, 220) + "…" : text;
+
+  showScreen("result");
+}
+
+// ── SHARE ─────────────────────────────────────────────────────────────────
+shareBtn.addEventListener("click", async () => {
+  if (!lastResult) return;
+  const { label, confidence, language, text } = lastResult;
+  const verdict = label === "FAKE" ? "🔴 FAKE" : "🟢 REAL";
+  const msg = `NaijaFactCheck Result\n${verdict} — ${confidence}% confidence\nLanguage: ${(language||"").toUpperCase()}\n\n"${(text||"").slice(0, 120)}…"\n\nCheck news yourself: ${window.location.href}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "NaijaFactCheck", text: msg });
+    } else {
+      await navigator.clipboard.writeText(msg);
+      showToast("✅ Result copied to clipboard");
+    }
+  } catch { showToast("Could not share — try copying manually"); }
+});
+
+// ── CHECK ANOTHER ─────────────────────────────────────────────────────────
+checkAnotherBtn.addEventListener("click", () => {
+  textInput.value = "";
+  charCount.textContent = "0 / 2000";
+  checkBtn.disabled = true;
+  confFill.style.width = "0%";
+  showScreen("home");
+  setTimeout(() => textInput.focus(), 300);
+});
+
+// ── OFFLINE ───────────────────────────────────────────────────────────────
+const offlineBanner = document.getElementById("offline-banner");
+const statusDot     = document.getElementById("status-dot");
+
+window.addEventListener("offline", () => {
+  offlineBanner.classList.add("show");
+  statusDot.style.background = "var(--red)";
+  statusDot.style.boxShadow  = "0 0 10px var(--red)";
+  statusDot.style.animation  = "none";
+});
+
+window.addEventListener("online", () => {
+  offlineBanner.classList.remove("show");
+  statusDot.style.background = "";
+  statusDot.style.boxShadow  = "";
+  statusDot.style.animation  = "";
+});
+
+// ── SERVICE WORKER ────────────────────────────────────────────────────────
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(err => {
+    console.warn("Service worker registration failed:", err);
+  });
+}
+</script>
+</body>
+</html>
