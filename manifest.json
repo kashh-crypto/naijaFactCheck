@@ -1,0 +1,35 @@
+{
+  "name": "NaijaFactCheck",
+  "short_name": "NaijaFactCheck",
+  "description": "AI-powered multilingual fact verification system for Hausa, Yoruba, Nigerian Pidgin and English",
+  "start_url": "/naijaFactCheck/",
+  "scope": "/naijaFactCheck/",
+  "display": "standalone",
+  "background_color": "#080b08",
+  "theme_color": "#080b08",
+  "orientation": "portrait-primary",
+  "categories": ["news", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Check News",
+      "short_name": "Check",
+      "description": "Paste and check a news article",
+      "url": "/naijaFactCheck/",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

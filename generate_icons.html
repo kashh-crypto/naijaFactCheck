@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>NaijaFactCheck — Icon Generator</title>
+<style>
+  body { background: #080b08; color: #e8ede8; font-family: monospace;
+         display: flex; flex-direction: column; align-items: center;
+         gap: 24px; padding: 40px; }
+  h2   { color: #2deb6f; letter-spacing: 2px; font-size: 14px; }
+  canvas { border: 1px solid #1e271e; border-radius: 16px; }
+  .row { display: flex; gap: 32px; align-items: flex-end; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 8px;
+         font-size: 11px; color: #9aaa9a; }
+  button {
+    margin-top: 8px; padding: 10px 24px;
+    background: #2deb6f; color: #030f05;
+    border: none; border-radius: 8px; font-weight: 700;
+    cursor: pointer; font-size: 13px; font-family: monospace;
+  }
+  button:hover { opacity: 0.85; }
+  p { color: #4a5a4a; font-size: 11px; text-align: center; max-width: 420px; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<h2>NAIJAFACTCHECK — PWA ICON GENERATOR</h2>
+
+<div class="row">
+  <div class="col">
+    <canvas id="c192" width="192" height="192"></canvas>
+    <span>192 × 192</span>
+    <button onclick="download('c192','icon-192.png')">Download</button>
+  </div>
+  <div class="col">
+    <canvas id="c512" width="512" height="512"></canvas>
+    <span>512 × 512</span>
+    <button onclick="download('c512','icon-512.png')">Download</button>
+  </div>
+</div>
+
+<p>
+  Download both icons and place them in your <code>pwa/icons/</code> folder.
+  These are already included in the project zip — use this page only if you need to regenerate them.
+</p>
+
+<script>
+function drawIcon(canvas) {
+  const s    = canvas.width;
+  const ctx  = canvas.getContext("2d");
+  const bg   = "#080b08";
+  const grn  = "#2deb6f";
+  const grns = "#1a9944";
+  const r    = s / 5;
+
+  ctx.clearRect(0, 0, s, s);
+
+  // Rounded background
+  ctx.beginPath();
+  ctx.roundRect(0, 0, s, s, r);
+  ctx.fillStyle = bg;
+  ctx.fill();
+
+  // Outer ring
+  const rw = Math.max(2, s / 40);
+  ctx.beginPath();
+  ctx.roundRect(rw, rw, s - rw*2, s - rw*2, r);
+  ctx.strokeStyle = grns;
+  ctx.lineWidth   = rw;
+  ctx.stroke();
+
+  // Magnifying glass circle
+  const cx = s / 2, cy = s * 0.44, cr = s * 0.22;
+  const lw = Math.max(2, s / 22);
+  ctx.beginPath();
+  ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+  ctx.strokeStyle = grn;
+  ctx.lineWidth   = lw;
+  ctx.stroke();
+
+  // Handle
+  const ang = Math.PI * 0.75;
+  ctx.beginPath();
+  ctx.moveTo(cx + Math.cos(ang) * cr, cy + Math.sin(ang) * cr);
+  ctx.lineTo(cx + Math.cos(ang) * cr * 1.9, cy + Math.sin(ang) * cr * 1.9);
+  ctx.strokeStyle = grn;
+  ctx.lineWidth   = lw;
+  ctx.lineCap     = "round";
+  ctx.stroke();
+
+  // Label
+  const fs = Math.max(10, s / 14);
+  ctx.font         = `bold ${fs}px monospace`;
+  ctx.fillStyle    = grn;
+  ctx.textAlign    = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("NFC", s / 2, s * 0.82);
+}
+
+function download(id, filename) {
+  const c   = document.getElementById(id);
+  const a   = document.createElement("a");
+  a.href     = c.toDataURL("image/png");
+  a.download = filename;
+  a.click();
+}
+
+["c192", "c512"].forEach(id => drawIcon(document.getElementById(id)));
+</script>
+</body>
+</html>
