@@ -1047,9 +1047,10 @@ nav {
   flex-direction: column;
   gap: 4px;
 }
-.evidence-item.contradicts { border-left: 3px solid var(--red, #e74c3c); }
-.evidence-item.supports    { border-left: 3px solid var(--green, #2deb6f); }
-.evidence-item.neutral     { border-left: 3px solid var(--muted, #666); }
+.evidence-item.contradicts  { border-left: 3px solid var(--red, #e74c3c); }
+.evidence-item.supports     { border-left: 3px solid var(--green, #2deb6f); }
+.evidence-item.soft_support { border-left: 3px solid var(--green, #2deb6f); opacity: 0.85; }
+.evidence-item.neutral      { border-left: 3px solid var(--muted, #666); }
 .ev-header {
   display: flex;
   justify-content: space-between;
@@ -1100,10 +1101,19 @@ nav {
   color: var(--green, #2deb6f);
   text-decoration: none;
   opacity: 0.85;
-  margin-top: 2px;
   display: inline-block;
 }
 .ev-link:hover { opacity: 1; text-decoration: underline; }
+.ev-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.ev-date {
+  font-size: 10px;
+  color: var(--muted, #888);
+}
 .method-badge {
   display: inline-flex;
   align-items: center;
@@ -1682,6 +1692,10 @@ function renderResult(result, text) {
     methodBadge.className = "method-badge";
     methodIcon.textContent  = result.method === "hybrid_low_signal" ? "🟡" : "🔍";
     methodLabel.textContent = `Hybrid — ${result.sources_searched} source${result.sources_searched !== 1 ? "s" : ""} searched`;
+  } else if (result.method === "knowledge_base") {
+    methodBadge.className   = "method-badge";
+    methodIcon.textContent  = "📚";
+    methodLabel.textContent = "Verified from Nigerian Knowledge Base";
   } else {
     methodBadge.className   = "method-badge classifier-only";
     methodIcon.textContent  = "🤖";
@@ -1710,9 +1724,10 @@ function renderResult(result, text) {
         </div>
         ${ev.title ? `<div class="ev-title">${escapeHTML(ev.title)}</div>` : ""}
         <div class="ev-summary">${escapeHTML(ev.summary)}</div>
-        ${ev.url ? `<a class="ev-link" href="${escapeHTML(ev.url)}" target="_blank" rel="noopener noreferrer">
-          🔗 Read article
-        </a>` : ""}
+        <div class="ev-footer">
+          ${ev.published_date ? `<span class="ev-date">🗓 ${escapeHTML(ev.published_date.slice(0,10))}</span>` : ""}
+          ${ev.url ? `<a class="ev-link" href="${escapeHTML(ev.url)}" target="_blank" rel="noopener noreferrer">🔗 Read article</a>` : ""}
+        </div>
       `;
       evidenceList.appendChild(card);
     });
@@ -1720,8 +1735,14 @@ function renderResult(result, text) {
     retrievalNotice.style.display = "none";
   } else {
     evidenceSection.classList.remove("show");
-    // Show notice only if classifier_only
-    retrievalNotice.style.display = result.method === "classifier_only" ? "block" : "none";
+    // Show notice for classifier_only and knowledge_base methods
+    if (result.method === "classifier_only" || result.method === "knowledge_base") {
+      retrievalNotice.style.display = "block";
+      const noticeText = retrievalNotice.querySelector("p") || retrievalNotice;
+      if (result.reason) noticeText.textContent = result.reason;
+    } else {
+      retrievalNotice.style.display = "none";
+    }
   }
 
   showScreen("result");
